@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinqCheckConstraints.Core", "LinqCheckConstraints.Core\LinqCheckConstraints.Core.csproj", "{43A881DC-8D1E-46CB-A7CD-56F4D24C2CC6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinqCheckConstraints.Postgres", "LinqCheckConstraints.Postgres\LinqCheckConstraints.Postgres.csproj", "{7CD7B33B-D46C-4376-AA9D-AD7621AA46DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinqCheckConstraints.Tests", "LinqCheckConstraints.Tests\LinqCheckConstraints.Tests.csproj", "{0979DD4C-A529-47F0-8BD3-7D08BDFA13D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinqCheckConstraints.Tests.Postgres", "LinqCheckConstraints.Tests.Postgres\LinqCheckConstraints.Tests.Postgres.csproj", "{D0F901AD-41D0-4E99-B8AF-075210477E74}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{43A881DC-8D1E-46CB-A7CD-56F4D24C2CC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43A881DC-8D1E-46CB-A7CD-56F4D24C2CC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43A881DC-8D1E-46CB-A7CD-56F4D24C2CC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43A881DC-8D1E-46CB-A7CD-56F4D24C2CC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7CD7B33B-D46C-4376-AA9D-AD7621AA46DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7CD7B33B-D46C-4376-AA9D-AD7621AA46DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7CD7B33B-D46C-4376-AA9D-AD7621AA46DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7CD7B33B-D46C-4376-AA9D-AD7621AA46DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0979DD4C-A529-47F0-8BD3-7D08BDFA13D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0979DD4C-A529-47F0-8BD3-7D08BDFA13D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0979DD4C-A529-47F0-8BD3-7D08BDFA13D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0979DD4C-A529-47F0-8BD3-7D08BDFA13D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0F901AD-41D0-4E99-B8AF-075210477E74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0F901AD-41D0-4E99-B8AF-075210477E74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0F901AD-41D0-4E99-B8AF-075210477E74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0F901AD-41D0-4E99-B8AF-075210477E74}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
