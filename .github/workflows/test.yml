@@ -1,0 +1,55 @@
+name: .NET Unit Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14.2-alpine
+        ports:
+          - 8765:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: Pass@word
+          POSTGRES_DB: TestContext
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore
+
+    - name: Install Entity Framework Tool
+      run: |
+        dotnet tool install --global dotnet-ef
+        dotnet tool restore
+
+    - name: Migrate LinqCheckConstraints.Tests.Postgres
+      run: dotnet ef migrations add AddInitialMigration -p LinqCheckConstraints.Tests.Postgres
+
+    - name: Update LinqCheckConstraints.Tests.Postgres
+      run: dotnet ef database update -p LinqCheckConstraints.Tests.Postgres
+
+    - name: Migrate LinqCheckConstraints.Tests.Postgres.AspNetCore
+      run: dotnet ef migrations add AddInitialMigration -p LinqCheckConstraints.Tests.Postgres.AspNetCore
+
+    - name: Update LinqCheckConstraints.Tests.Postgres.AspNetCore
+      run: dotnet ef database update -p LinqCheckConstraints.Tests.Postgres.AspNetCore
+
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
