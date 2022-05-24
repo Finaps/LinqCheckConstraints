@@ -3,7 +3,7 @@ using Npgsql;
 
 namespace Finaps.LinqCheckConstraints.Postgres;
 
-public class PostgresCheckConstraintInterceptor : CheckConstraintInterceptor<PostgresException>
+public class PostgresConstraintInterceptor : ConstraintInterceptor<PostgresException>
 {
-  protected override string? GetViolatedCheckConstraintName(PostgresException exception) => exception.ConstraintName;
+  protected override string? GetCheckConstraintName(PostgresException exception) => exception.ConstraintName;
 }

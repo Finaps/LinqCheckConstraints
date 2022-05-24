@@ -6,6 +6,7 @@
 docs
 .idea
 appsettings.local.json
+Migrations
 
 # User-specific files
 *.rsuser

@@ -6,15 +6,43 @@ namespace Finaps.LinqCheckConstraints.Core;
 
 public static class EntityTypeBuilderExtensions
 {
-  public static EntityTypeBuilder<TEntity> HasCheckConstraint<TEntity>(
+  public static EntityTypeBuilder<TEntity> HasLinqCheckConstraint<TEntity>(
     this EntityTypeBuilder<TEntity> builder, SqlExpressionConverter converter, string name,
     Expression<Func<TEntity, bool>> expression, string? message = null) where TEntity : class
   {
-    var constraintName = $"CK_{typeof(TEntity).Name}_{name}";
+    var type = typeof(TEntity);
+    var constraint = $"CK_{type.Name}_{name}";
+    
+    ConstraintExceptionCache.Add(new ConstraintExceptionInfo
+    {
+      Type = ConstraintType.Check,
+      Name = name,
+      ConstraintName = constraint,
+      EntityType = type,
+      Message = message ?? $"Check constraint '{name}' violated while updating entry of type '{type.Name}'.",
+      Properties = new ExpressionPropertiesExtractor().Extract(expression)
+    });
 
-    CheckConstraintExceptionCache.Messages[constraintName] = 
-      message ?? $"Check constraint '{name}' violated while updating entry of type '{typeof(TEntity).Name}'.";
+    return builder.HasCheckConstraint(constraint, converter.Convert(expression));
+  }
 
-    return builder.HasCheckConstraint(constraintName, converter.Convert(expression));
+  public static EntityTypeBuilder<TEntity> HasLinqUniqueConstraint<TEntity>(this EntityTypeBuilder<TEntity> builder, string name, Expression<Func<TEntity, object?>> expression, string? message = null) where TEntity : class
+  {
+    var type = typeof(TEntity);
+    var constraint = $"IX_{type.Name}_{name}";
+    
+    ConstraintExceptionCache.Add(new ConstraintExceptionInfo
+    {
+      Type = ConstraintType.Unique,
+      Name = name,
+      ConstraintName = constraint,
+      EntityType = type,
+      Message = message ?? $"Check constraint '{name}' violated while updating entry of type '{type.Name}'.",
+      Properties = new ExpressionPropertiesExtractor().Extract(expression)
+    });
+    
+    builder.HasIndex(expression, constraint).IsUnique();
+
+    return builder;
   }
 }

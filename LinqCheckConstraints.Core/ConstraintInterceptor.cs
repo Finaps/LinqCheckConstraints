@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Finaps.LinqCheckConstraints.Core;
 
-public abstract class CheckConstraintInterceptor<T> : SaveChangesInterceptor where T : DbException
+public abstract class ConstraintInterceptor<T> : SaveChangesInterceptor where T : DbException
 {
-  protected abstract string? GetViolatedCheckConstraintName(T exception);
+  protected abstract string? GetCheckConstraintName(T exception);
   
   public override void SaveChangesFailed(DbContextErrorEventData eventData)
   {
@@ -24,13 +24,9 @@ public abstract class CheckConstraintInterceptor<T> : SaveChangesInterceptor whe
 
   private void MaybeThrowCheckConstraintException(IErrorEventData eventData)
   {
-    if (eventData.Exception is not DbUpdateException exception) return;
+    if (eventData.Exception is not DbUpdateException inner) return;
     if (eventData.Exception.GetBaseException() is not T providerException) return;
 
-    var constraint = GetViolatedCheckConstraintName(providerException);
-
-    if (constraint == null || !CheckConstraintExceptionCache.Messages.TryGetValue(constraint, out var message)) return;
-
-    throw new CheckConstraintException(message, exception);
+    ConstraintExceptionCache.MaybeThrowException(GetCheckConstraintName(providerException), inner);
   }
 }
