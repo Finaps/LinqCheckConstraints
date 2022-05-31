@@ -14,7 +14,7 @@ public class ExpressionPropertiesExtractor : ExpressionVisitor
 
     Visit(expression);
 
-    return _properties.ToList();
+    return _properties.Distinct().ToList();
   }
   
   protected override Expression VisitMember(MemberExpression m)

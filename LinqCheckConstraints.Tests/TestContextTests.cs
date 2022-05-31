@@ -1,23 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Finaps.LinqCheckConstraints.Core;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace LinqCheckConstraints.Tests;
 
 public abstract class TestContextTests
 {
-  public abstract TestContext Context { get; }
+  protected DbContext Context { get; }
+
+  public TestContextTests(DbContext context) => Context = context;
 
   [Fact]
   public async Task Can_Insert_Default_TestEntity()
   {
-    var context = Context;
-    
-    context.Add(new TestEntity());
-    await context.SaveChangesAsync();
+    Context.Add(new TestEntity());
+    await Context.SaveChangesAsync();
   }
   
   public static TheoryData<string, TestEntity, List<string>> Data => new()
@@ -41,7 +41,13 @@ public abstract class TestContextTests
     { TestContext.DateTimeOffsetSmallerThanNextYear, new TestEntity { DateTimeOffset = DateTimeOffset.Now.AddYears(2) }, new List<string> { nameof(TestEntity.DateTimeOffset) } },
     { TestContext.IdNotEqualToEmpty, new TestEntity { Id = Guid.Empty }, new List<string> { nameof(TestEntity.Id) } },
     { TestContext.EmailIsValid, new TestEntity { Email = "definitely not an email" }, new List<string> { nameof(TestEntity.Email) } },
-    { TestContext.UniqueIsUnique, new TestEntity { Unique = Guid.Empty }, new List<string> { nameof(TestEntity.Unique) } }
+    { TestContext.UniqueIsUnique, new TestEntity { Unique = Guid.Empty }, new List<string> { nameof(TestEntity.Unique) } },
+    { TestContext.DecimalSmallerThanUint, new TestEntity { Decimal = 1000 }, new List<string> { nameof(TestEntity.Decimal), nameof(TestEntity.Uint) } },
+    { TestContext.ComplicatedConstraint, new TestEntity { EnableComplicatedConstraint = true, Int = 1000 }, new List<string> { nameof(TestEntity.EnableComplicatedConstraint), nameof(TestEntity.Decimal), nameof(TestEntity.Int), nameof(TestEntity.Uint), nameof(TestEntity.Email) }},
+    { TestContext.TernaryConstraint, new TestEntity { Int = 400, Byte = 2 }, new List<string> { nameof(TestEntity.Int), nameof(TestEntity.Byte), nameof(TestEntity.Sbyte)} },
+    { TestContext.TernaryConstraint, new TestEntity { Sbyte = 2 }, new List<string> { nameof(TestEntity.Int), nameof(TestEntity.Byte), nameof(TestEntity.Sbyte)} },
+    { TestContext.SecondTernaryConstraint, new TestEntity { Uint = 400 }, new List<string> { nameof(TestEntity.Uint), nameof(TestEntity.Long), nameof(TestEntity.Ulong)} },
+    { TestContext.SecondTernaryConstraint, new TestEntity { Ulong = 2 }, new List<string> { nameof(TestEntity.Uint), nameof(TestEntity.Long), nameof(TestEntity.Ulong)} },
   };
 
   [Theory]
