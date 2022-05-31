@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Finaps.LinqCheckConstraints.Core;
 
-public abstract class SqlExpressionConverter : ExpressionVisitor
+public class SqlExpressionConverter : ExpressionVisitor
 {
   private readonly List<string> _tokens = new();
   private Type? _declaringType;
@@ -42,7 +42,7 @@ public abstract class SqlExpressionConverter : ExpressionVisitor
       ExpressionType.GreaterThan => ">",
       ExpressionType.GreaterThanOrEqual => ">=",
       
-      ExpressionType.Add => "+",
+      ExpressionType.Add => node.Type == typeof(string) ? "||" : "+",
       ExpressionType.Subtract => "-",
       ExpressionType.Multiply => "*",
       ExpressionType.Divide => "/",
@@ -74,24 +74,24 @@ public abstract class SqlExpressionConverter : ExpressionVisitor
     };
 
   // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-PRECEDENCE-TABLE
-  protected virtual byte Precedence(ExpressionType type) =>
-    type switch
+  protected virtual int Precedence(Expression expression) =>
+    expression.NodeType switch
     {
-      ExpressionType.OrElse => 0,
-      ExpressionType.AndAlso => 1,
-      ExpressionType.Not => 2,
-      ExpressionType.LessThan or ExpressionType.LessThanOrEqual => 3,
-      ExpressionType.Equal or ExpressionType.NotEqual => 3,
-      ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual => 3,
-      // (any other operator) => 4
-      ExpressionType.Add or ExpressionType.Subtract => 5,
-      ExpressionType.Multiply or ExpressionType.Divide or ExpressionType.Modulo => 6,
-      ExpressionType.Power => 7,
-      ExpressionType.UnaryPlus or ExpressionType.Negate => 8,
-      ExpressionType.Index => 9,
-      ExpressionType.Convert => 10,
-      ExpressionType.MemberAccess or ExpressionType.Constant => 11,
-      _ => 4
+      ExpressionType.OrElse => -4,
+      ExpressionType.AndAlso => -3,
+      ExpressionType.Not => -2,
+      ExpressionType.LessThan or ExpressionType.LessThanOrEqual => -1,
+      ExpressionType.Equal or ExpressionType.NotEqual => -1,
+      ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual => -1,
+      // (any other operator) => 0
+      ExpressionType.Add or ExpressionType.Subtract => 1,
+      ExpressionType.Multiply or ExpressionType.Divide or ExpressionType.Modulo => 2,
+      ExpressionType.Power => 3,
+      ExpressionType.UnaryPlus or ExpressionType.Negate => 4,
+      ExpressionType.Index => 5,
+      ExpressionType.Convert => 6,
+      ExpressionType.MemberAccess or ExpressionType.Constant => 7,
+      _ => 0
     };
   
   public void Visit(Expression? node, bool brackets)
@@ -106,17 +106,17 @@ public abstract class SqlExpressionConverter : ExpressionVisitor
     if (node.NodeType != ExpressionType.Convert)
       _tokens.Add(ConvertUnary(node));
 
-    Visit(node.Operand);
+    Visit(node.Operand, Precedence(node) > Precedence(node.Operand));
     return node;
   }
 
   protected override Expression VisitBinary(BinaryExpression node)
   {
-    Visit(node.Left, Precedence(node.NodeType) > Precedence(node.Left.NodeType));
+    Visit(node.Left, Precedence(node) > Precedence(node.Left));
 
     _tokens.Add(ConvertBinary(node));
 
-    Visit(node.Right, Precedence(node.NodeType) >= Precedence(node.Right.NodeType));
+    Visit(node.Right, Precedence(node) >= Precedence(node.Right));
 
     return node;
   }
@@ -153,37 +153,79 @@ public abstract class SqlExpressionConverter : ExpressionVisitor
 
   protected override Expression VisitMember(MemberExpression node)
   {
-    _tokens.Add(IsNavigationExpression(node) 
-      ? DoubleQuote(node.Member.Name)
-      : ConvertObject(GetValue(node)).ToString()!);
+    switch (IsParameterAccess(node))
+    {
+      // When current node accesses a parameter member (e.g. x => x.A) -> resolve as "A"
+      case true when node.Expression is { NodeType: ExpressionType.Parameter }:
+        _tokens.Add(DoubleQuote(node.Member.Name));
+        break;
+      
+      // When current node accesses the str.Length member -> resolve as char_length(str)
+      case true or false when node.Member.DeclaringType == typeof(string) && node.Member.Name == nameof(string.Length):
+        _tokens.Add("char_length(");
+        Visit(node.Expression);
+        _tokens.Add(")");
+        break;
+      
+      // When current node accesses non parameter member -> resolve object
+      case false:
+        _tokens.Add(ConvertObject(GetValue(node)).ToString()!);
+        break;
+      
+      // Otherwise, member access is not supported
+      default:
+        throw new NotSupportedException($"Member {node.Member.DeclaringType}.{node.Member.Name} is not supported");
+    }
 
     return node;
   }
 
   protected override Expression VisitMethodCall(MethodCallExpression node)
   {
-    var obj = node.Object == null ? null : GetValue(node.Object);
-
-    switch (obj)
+    switch (node.Method.Name)
     {
-      case Regex regex when node.Method.Name is nameof(Regex.IsMatch):
-        if (node.Arguments.SingleOrDefault() is MemberExpression expression && IsNavigationExpression(expression))
-          _tokens.AddRange(new []{ DoubleQuote(expression.Member.Name), "~*", SingleQuote(regex.ToString()) });
-        else
-          throw new NotSupportedException($"First argument to {nameof(Regex)}.{nameof(Regex.IsMatch)} must be a navigation expression");
+      case nameof(Regex.IsMatch) when node.Object != null && GetValue(node.Object) is Regex regex:
+        VisitRegex(node.Arguments.Single(), regex);
+        break;
+      case nameof(Regex.IsMatch) when node.Method.DeclaringType == typeof(Regex):
+        VisitRegex(node.Arguments.First(), node.Arguments.Skip(1).Single());
+        break;
+      case nameof(string.ToLower):
+        _tokens.Add("lower(");
+        Visit(node.Object);
+        _tokens.Add(")");
+        break;
+      case nameof(string.ToUpper):
+        _tokens.Add("upper(");
+        Visit(node.Object);
+        _tokens.Add(")");
         break;
       default:
-        throw new NotSupportedException($"Method {obj}.{node.Method.Name} is not supported");
+        throw new NotSupportedException($"Method {node.Method.DeclaringType}.{node.Method.Name} is not supported");
     }
 
     return node;
   }
 
+  protected virtual void VisitRegex(Expression argument, Regex regex)
+  {
+    Visit(argument, 0 > Precedence(argument));
+    _tokens.AddRange(new[] { "~", SingleQuote(regex) });
+  }
+
+  protected virtual void VisitRegex(Expression argument, Expression regex)
+  {
+    Visit(argument, 0 > Precedence(argument));
+    _tokens.Add("~");
+    Visit(regex, 0 > Precedence(regex));
+  }
+
   private static object GetValue(Expression member) =>
     Expression.Lambda<Func<object>>(Expression.Convert(member, typeof(object))).Compile()();
 
-  private bool IsNavigationExpression(MemberExpression expression) =>
-    expression.Expression?.NodeType == ExpressionType.Parameter && expression.Member.DeclaringType == _declaringType;
+  private static bool IsParameterAccess(MemberExpression? e) =>
+    e != null && 
+    (e.Expression is { NodeType: ExpressionType.Parameter } || IsParameterAccess(e.Expression as MemberExpression));
 
   private static bool IsNullConstant(Expression exp)
   {
