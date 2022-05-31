@@ -27,6 +27,10 @@ public class TestContext : DbContext
   public const string IdNotEqualToEmpty = "IdNotEqualToEmpty";
   public const string EmailIsValid = "EmailIsValid";
   public const string UniqueIsUnique = "UniqueIsUnique";
+  public const string DecimalSmallerThanUint = "DecimalSmallerThanUint";
+  public const string ComplicatedConstraint = "ComplicatedConstraint";
+  public const string TernaryConstraint = "TernaryConstraint";
+  public const string SecondTernaryConstraint = "SecondTernaryConstraint";
 
   private readonly SqlExpressionConverter _converter;
   protected TestContext(DbContextOptions<TestContext> options, SqlExpressionConverter converter) : base(options)
@@ -60,10 +64,14 @@ public class TestContext : DbContext
       .HasLinqCheckConstraint(_converter, DateTimeOffsetSmallerThanNextYear, x => x.DateTimeOffset < nextYear)
       .HasLinqCheckConstraint(_converter, IdNotEqualToEmpty, x => x.Id != Guid.Empty)
       .HasLinqCheckConstraint(_converter, EmailIsValid, x => email.IsMatch(x.Email))
+      .HasLinqCheckConstraint(_converter, DecimalSmallerThanUint, x => x.Decimal < x.Uint)
+      .HasLinqCheckConstraint(_converter, ComplicatedConstraint, x => !x.EnableComplicatedConstraint || (x.Decimal > x.Int && (x.Decimal < x.Uint || email.IsMatch(x.Email))))
+      .HasLinqCheckConstraint(_converter, TernaryConstraint, x => (x.Int > 200 ? x.Byte : x.Sbyte) == 0)
+      .HasLinqCheckConstraint(_converter, SecondTernaryConstraint, x => x.Uint > 200 ? x.Long == 6 : x.Ulong == 0)
       .HasLinqUniqueConstraint(UniqueIsUnique, x => x.Unique);
 
     // Seed Entity for Unique Constraints Test
     builder.Entity<TestEntity>()
-      .HasData(new TestEntity { Unique = Guid.Empty, AlsoUnique = Guid.Empty });
+      .HasData(new TestEntity { Unique = Guid.Empty });
   }
 }

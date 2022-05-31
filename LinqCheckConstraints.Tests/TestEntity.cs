@@ -41,5 +41,6 @@ public class TestEntity
 
   public string Email { get; set; } = "test@examle.com";
   public Guid Unique { get; set; } = Guid.NewGuid();
-  public Guid AlsoUnique { get; set; } = Guid.NewGuid();
+  public bool EnableComplicatedConstraint { get; set; } = false;
+  
 }
